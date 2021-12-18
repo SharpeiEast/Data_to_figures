@@ -1,3 +1,6 @@
+
+
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import time
@@ -11,8 +14,8 @@ temp_list = [str(i)+'.0°C' for i in temp_range]  #测试温度范围，字符�
 tablename = '@0result.csv'
 
 # 需要每次设置
-ref_list = ['10.13m_10.0%','10.08m_54.0%','10.12m_90.0%']  #数据文件夹
-id_list = ['dis_accuracy','dis_precision','ref_accuracy','ref_precision']  #数据特征
+ref_list = ['14.6m_1.8%']  #数据文件夹
+id_list = ['PD','peak_rms']  #数据特征
 
 
 
@@ -26,17 +29,38 @@ class Excel_Combine():
         self.foldername = time.strftime("%Y-%m-%d~%H-%M-%S", time.localtime()) #获取字符串形式的本地时间
     def excel_process(self):
         os.mkdir(self.foldername)  #以本地时间创建文件夹
+        fig_name = ''
         for fea in self.fea:
             for ref in self.ref:
                 fea_ref_df = pd.DataFrame()
+                fig_name += (fea + '_' + ref)
+                plt.figure(num=fig_name, figsize=(15, 9))
+                legend_list = []
                 for temp in self.temp:
                     path = temp + '//' + ref + '//' + tablename
                     df = pd.read_csv(path,encoding='gbk')
+                    laserIDnum = [i for i in range(len(df['laserID']))]
+                    df_sort = df.sort_values(by=['laserID'], ascending=[True]) # 按照雷达通道id排序，否则有时候输出的图片x左边轴雷达id是逆序
+                    laserID_str = [str(id) for id in df_sort['laserID']]
+                    plt.plot(laserID_str, df_sort[fea])
                     mean_ = df[fea].mean()    #求各通道平均
                     list_ = list(df[fea]) + [mean_]
                     fea_ref_df[temp] = list_
+                    legend_list.append(temp)
                 excel_name = self.foldername +'//'+ fea + '_' + ref + '.xlsx'
                 fea_ref_df.to_excel(excel_name)  #excel存入文件夹
+                plt.title(fea + '_' + ref)
+
+                plt.xlabel('LaserID')
+                y_label = fea
+                if fea in ['dis_accuracy', 'dis_precision']:
+                    y_label += ' (cm)'
+                elif fea in ['PD', 'ref_accuracy', 'ref_precision']:
+                    y_label += ' (%)'
+                plt.ylabel(y_label)
+                plt.legend(legend_list)
+                plt.savefig(self.foldername +'//'+ fea + ref + 'LaserID' + ".png", bbox_inches='tight')
+                plt.clf()
         return 0
     def draw_curve(self):
         Ranges = {}
@@ -63,6 +87,21 @@ class Excel_Combine():
                 plt.ylabel(y_label)
                 plt.savefig(self.foldername +'//'+ fea + ref + ".png", bbox_inches='tight')
                 plt.clf()
+
+                figbox = plt.figure(figsize=(24, 12))
+                plt.title(fea + '~' + ref)
+                boxplot = df.boxplot(column=self.temp)
+                plt.xlabel("Temperature (℃)")
+                y_label = fea
+                if fea == 'dis_accuracy':
+                    y_label += ' (mm)'
+                elif fea == 'PD':
+                    y_label += ' (%)'
+                plt.ylabel(y_label)
+                figbox.savefig(self.foldername + '//' + fea + ref + "boxplot.png", bbox_inches='tight')
+                figbox.clf()
+
+
 
                 ref_y.append(y)
                 fig_name += ref

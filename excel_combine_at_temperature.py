@@ -142,7 +142,7 @@ class Excel_Combine():
         for ref in self.ref:
             for file in os.listdir(ref):
                 if os.path.isfile(os.path.join(ref, file)) == True:
-                    Excel_Combine.mycopyfile(self,ref + '//' + file,self.foldername + '//' + ref + '_')
+                    Excel_Combine.mycopyfile(self,ref + '//' + file, self.foldername + '//' + ref[:-1] + '_')
                 else:
                     print(ref + '//' + file + ' ：这不是个文件，可能是个文件夹？')
         return 0

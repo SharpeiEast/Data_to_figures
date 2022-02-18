@@ -6,6 +6,7 @@ import pandas as pd
 import time
 import os
 import shutil
+from math import sqrt
 
 # 一般不需要改变
 temp_range = range(-30,120,10)  #测试的温度范围
@@ -15,9 +16,9 @@ temp_list = [str(i)+'.0°C' for i in temp_range]  #测试温度范围，字符�
 tablename = '@0result.csv'
 
 # 需要每次设置
-ref_list = ['9.9m_10.0%','10.12m_54.0%','10.25m_90.0%']  #数据文件夹
-# id_list = ['PD','peak_rms']  #数据特征
-id_list = ['dis_accuracy','dis_precision','ref_accuracy','ref_precision']
+ref_list = ['26.76m_10.0%']  #数据文件夹
+id_list = ['PD','peak_rms','peak_mean','rms_mean']  #数据特征
+# id_list = ['dis_accuracy','dis_precision','ref_accuracy','ref_precision']
 
 
 class Excel_Combine():
@@ -25,6 +26,7 @@ class Excel_Combine():
         self.temp =[str(i)+'.0°C' for i in temps]
         self.temp_str = [str(i) for i in temps]
         self.ref = refs
+        self.transmittance = 0.4  # 光筛透过率
         self.file = filename  #tablename
         self.fea = features   #features:dis_accuracy, PD, ....
         self.foldername = time.strftime("%Y-%m-%d~%H-%M-%S", time.localtime()) #获取字符串形式的本地时间
@@ -81,25 +83,39 @@ class Excel_Combine():
                 plt.title(fea + ref)
                 plt.xlabel("Temperature (℃)")
                 y_label = fea
-                if fea == 'dis_accuracy':
-                    y_label += ' (mm)'
-                elif fea == 'PD':
+                if fea in ['dis_accuracy','dis_precision']:
+                    y_label += ' (cm)'
+                elif fea in ['PD', 'ref_accuracy', 'ref_precision']:
                     y_label += ' (%)'
                 plt.ylabel(y_label)
                 plt.savefig(self.foldername +'//'+ fea + ref + ".png", bbox_inches='tight')
                 plt.clf()
 
-                figbox = plt.figure(figsize=(24, 12))
-                plt.title(fea + '~' + ref)
+                if fea == 'peak_rms':
+                    y_dis = [sqrt(yi) * float(ref[:5]) / self.transmittance for yi in y]
+                    plt.figure(figsize=(7.5, 6.0))
+                    plt.plot(self.temp_str, y_dis)
+                    plt.title(fea + ref + ' Equivalent Distance')
+                    plt.xlabel("Temperature (℃)")
+                    y_label = 'Equivalent Distance'
+                    plt.ylabel(y_label)
+                    plt.savefig(self.foldername + '//' + '00hushi---' + fea + ref + 'E_D' + ".png", bbox_inches='tight')
+                    plt.clf()
+                    print(fea + '_' + ref + 'E_D' + '--------result of laser_id in average: ', y_dis)  # 输出POD、或者其他什么东西的各通道均值
+
+                figbox = plt.figure(figsize=(20, 12))
+                plt.title(fea + '~' + ref,fontsize=20)
                 boxplot = df.boxplot(column=self.temp)
-                plt.xlabel("Temperature (℃)")
+                plt.xlabel("Temperature (℃)",fontsize = 20)
                 y_label = fea
-                if fea == 'dis_accuracy':
-                    y_label += ' (mm)'
-                elif fea == 'PD':
+                if fea in ['dis_accuracy','dis_precision']:
+                    y_label += ' (cm)'
+                elif fea in ['PD', 'ref_accuracy', 'ref_precision']:
                     y_label += ' (%)'
-                plt.ylabel(y_label)
-                figbox.savefig(self.foldername + '//' + fea + ref + "boxplot.png", bbox_inches='tight')
+                plt.ylabel(y_label,fontsize = 20)
+                plt.xticks(fontsize = 15)
+                plt.yticks(fontsize = 15)
+                figbox.savefig(self.foldername + '//' + ref[:-1] + '_' + fea + "_boxplot.png", bbox_inches='tight')
                 figbox.clf()
 
 
@@ -125,7 +141,7 @@ class Excel_Combine():
             Ranges[fea] = Range
         print('各特征极差：',Ranges)
         f = open(self.foldername + '//' + '00hushi---Ranges.txt','a')
-        f.write('\n')
+        # f.write('\n')
         f.write(str(Ranges))
         f.close()
         return Ranges
